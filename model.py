@@ -17,10 +17,6 @@ def _calculate_reconstruction_loss(y, y_pred):
     return reconstruction_loss
 
 def calculate_kl_loss(model):
-    # wrap `_calculate_kl_loss` such that it takes the model as an argument,
-    # returns a function which can take arbitrary number of arguments
-    # (for compatibility with `metrics` and utility in the loss function)
-    # and returns the kl loss
     def _calculate_kl_loss(*args):
         kl_loss = -0.5 * K.sum(1 + model.log_variance - K.square(model.mu) -
                                K.exp(model.log_variance), axis=1)
