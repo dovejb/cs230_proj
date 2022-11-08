@@ -163,7 +163,7 @@ class VAE():
     def _build_model(self):
         input = self._model_input
         output = self.decoder(self.encoder(input))
-        self.model = Model(input, output, name="VAE2D")
+        self.model = Model(input, output, name="model")
 
     def loss(self, y, y_pred):
         reconstruction_loss = _calculate_reconstruction_loss(y, y_pred)
@@ -186,6 +186,9 @@ class VAE():
     def forward(self, x):
         x = self.encoder(x)
         return x
+    
+    def predict(self, x):
+        return self.model.predict(x)
 
 if __name__ == "__main__":
     model = VAE(

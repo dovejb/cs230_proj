@@ -8,11 +8,11 @@ LEARNING_RATE = 0.0005
 BATCH_SIZE = 32
 EPOCHS = 100
 
-SAVEDIR = "./wav"
+MODEL_SAVEDIR = "./wav"
 
 def train(x_train, y_train, learning_rate=LEARNING_RATE, batch_size=BATCH_SIZE, epochs=EPOCHS):
     try:
-        model = VAE.load(SAVEDIR)
+        model = VAE.load(MODEL_SAVEDIR)
     except:
         model = VAE(
             input_shape=SHAPE,
@@ -29,8 +29,6 @@ def train(x_train, y_train, learning_rate=LEARNING_RATE, batch_size=BATCH_SIZE, 
 if __name__ == '__main__':
     tf.random.set_seed(2021050300)
     mix, voc = load_datasets("i:/dl/train")
-    mix = mix[..., np.newaxis]
-    voc = voc[..., np.newaxis]
     model = train(mix, voc)
     model.save("./wav")
 

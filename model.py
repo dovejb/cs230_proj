@@ -19,3 +19,5 @@ class model():
             conv_strides=(1,2,2,1),
             latent_dim=2,
         )
+        
+        
