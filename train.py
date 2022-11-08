@@ -1,6 +1,6 @@
 from tensorflow.keras.datasets import mnist
 
-from model import VAE
+from vae import VAE
 
 LEARNING_RATE = 0.0005
 BATCH_SIZE = 32

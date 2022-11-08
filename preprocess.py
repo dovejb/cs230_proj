@@ -51,8 +51,8 @@ class Preprocess():
         #stempeg.write_audio(oname, s)
                 
 if __name__ == '__main__':
-    p = Preprocess(input_dir="e:/stanford/cs230/datasets/musdb18/train",
-                   output_dir="i:/dl/train")
+    p = Preprocess(input_dir="e:/stanford/cs230/datasets/musdb18/test",
+                   output_dir="i:/dl/test")
     p.run()
     #p.dump_wav("i:/dl/train/mix_1_5_orig.pkl")
     
