@@ -22,3 +22,4 @@ if __name__ == '__main__':
     print(test_loss(y_test, y_pred))
     print(test_loss(y_test, y_test))
     print(test_loss(x_test, y_test))
+    print(test_loss(np.zeros((y_test.shape)), y_test))

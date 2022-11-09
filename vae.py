@@ -176,12 +176,13 @@ class VAE():
                            loss=self.loss,
                            metrics=[_calculate_reconstruction_loss, calculate_kl_loss(self)])
 
-    def train(self, x_train, y_train, batch_size, num_epochs):
+    def train(self, x_train, y_train, x_val, y_val, batch_size, num_epochs):
         self.model.fit(x_train, 
                        y_train, 
                        batch_size=batch_size,
                        epochs=num_epochs,
-                       shuffle=True)
+                       shuffle=True,
+                       validation_data=(x_val, y_val))
 
     def forward(self, x):
         x = self.encoder(x)
