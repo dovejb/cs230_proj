@@ -1,8 +1,11 @@
 from vae import VAE, _calculate_reconstruction_loss
 from constants import *
-from datasets import load_test_datasets
+from datasets import load_test_datasets, load_train_datasets
 import tensorflow as tf
+from tensorflow.keras.losses import MeanSquaredError
 import numpy as np
+import museval
+from evaluate import new_sdr
 
 def test_loss(y, y_pred):
     error = y - y_pred
@@ -15,11 +18,18 @@ def tensor_to_nparray(t):
     return nparray
 
 if __name__ == '__main__':
-    model = VAE.load(MODEL_SAVEDIR)
-    model.summary()
     x_test, y_test = load_test_datasets()
+    #x_train, y_train = load_train_datasets()
+    model = VAE.load(MODEL_SAVEDIR)
+    y = model.reconstruct("i:/dl/A Classic Education - NightOwl.stem.wav")
+    print(y)
+    print(y.shape)
+    exit()
     y_pred = model.predict(x_test)
-    print(test_loss(y_test, y_pred))
-    print(test_loss(y_test, y_test))
-    print(test_loss(x_test, y_test))
-    print(test_loss(np.zeros((y_test.shape)), y_test))
+    loss = MeanSquaredError()(y_test, y_pred)
+    print(loss)
+
+    sdr = new_sdr(y_test, y_pred)
+    print(sdr)
+    sdr = new_sdr(y_test, y_test)
+    print(sdr)

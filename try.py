@@ -1,8 +1,10 @@
 import tensorflow as tf
+import soundfile as sf
 
-a = tf.Variable([0.1,0.2,0.3,0.4])
-print("argmax", tf.math.argmax(a))
-print("reduce_max", tf.math.reduce_max(a))
-print(a > 0.25)
+s, rate = sf.read("i:/dl/train/voc_46_11_orig.wav")
+print(s.shape, rate)
+print(s)
 
-print("max", max(1,2))
+s, rate = sf.read("i:/dl/train/voc_46_11_orig.wav", always_2d=True)
+print(s.shape, rate)
+print(s)

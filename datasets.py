@@ -1,5 +1,6 @@
 import os
 import librosa
+import soundfile as sf 
 import numpy as np
 
 SR = 22050
@@ -22,6 +23,8 @@ def load_datasets(dir, length=352800):
     mix = []
     voc = []
     for f in sorted(files):
+        if "_aug_" in f: # do not use aug data now
+            continue
         if not f.endswith(".wav") or f.startswith("voc"):
             continue
         mixpath = os.path.join(dir, f)
@@ -49,5 +52,23 @@ def load_datasets(dir, length=352800):
         np.save(f, voc)
     return mix, voc
 if __name__ == '__main__':
-    a = np.array([1,2,3])
-    print(np.pad(a, (2,3)))
+    x_test, y_test = load_test_datasets()
+    print(x_test.shape)
+    print(x_test)
+    exit()
+    import scipy.io.wavfile as wav
+    import scipy.signal as signal
+    from matplotlib import pyplot as plt
+
+    #sample_rate, samples = wav.read("i:/dl/train/mix_1_2_orig.wav")
+    samples, sample_rate= sf.read("i:/dl/train/mix_1_2_orig.wav")
+    #samples, sample_rate= sf.read("i:/dl/A Classic Education - NightOwl.stem.wav")
+    print(sample_rate)
+    print(samples)
+    print(samples.shape)
+    samples = np.sum(samples, axis=1)
+    print(samples.shape, samples)
+    f, t, Zxx = signal.stft(samples, fs=sample_rate)
+    plt.pcolormesh(t, f, np.abs(Zxx), cmap='plasma')
+    plt.show()
+    #plt.specgram(samples.transpose(), cmap='plasma', Fs=sample_rate)

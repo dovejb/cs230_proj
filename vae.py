@@ -7,9 +7,18 @@ from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.losses import MeanSquaredError
 import os
 import pickle
+import museval
+from constants import *
+import soundfile as sf
+import librosa
+from constants import *
+from preprocess import split_wav
 
 
-tf.compat.v1.disable_eager_execution()
+#tf.compat.v1.disable_eager_execution()
+
+def mse_with_zero(y, y_pred):
+    return K.mean(K.square(y_pred))
 
 def _calculate_reconstruction_loss(y, y_pred):
     error = y - y_pred
@@ -30,7 +39,8 @@ class VAE():
                  conv_kernels = [3, 5, 3],
                  conv_strides = [1, 2, 2],
                  latent_dim = 2,
-                 vae_alpha = 1000,
+                 vae_beta = 0.001,
+                 scale = 1,
                  ):
 
         self.input_shape = input_shape   
@@ -38,7 +48,8 @@ class VAE():
         self.conv_kernels = conv_kernels
         self.conv_strides = conv_strides
         self.latent_dim = latent_dim
-        self.vae_alpha = vae_alpha
+        self.vae_beta = vae_beta
+        self.scale = scale
 
         self._conv_layer = tfl.Conv2D
         self._convtranspose_layer = tfl.Conv2DTranspose
@@ -65,7 +76,8 @@ class VAE():
             self.conv_kernels,
             self.conv_strides,
             self.latent_dim,
-            self.vae_alpha,
+            self.vae_beta,
+            self.scale,
         ]
         with open(os.path.join(folder, "parameters.pkl"), "wb") as f:
             pickle.dump(parameters, f)
@@ -107,15 +119,16 @@ class VAE():
         # Flatten
         x = tfl.Flatten()(x)
         self.mu = tfl.Dense(self.latent_dim, name="mu")(x)
-        self.log_variance = tfl.Dense(self.latent_dim, name="log_variance")(x)
+        #self.log_variance = tfl.Dense(self.latent_dim, name="log_variance")(x)
 
-        def sample_point_from_normal_distribution(args):
-            mu, log_variance = args
-            epsilon = K.random_normal(shape=K.shape(self.mu), mean=0., stddev=1.)
-            sample_points = mu + K.exp(log_variance/2) * epsilon
-            return sample_points
+        #def sample_point_from_normal_distribution(args):
+        #    mu, log_variance = args
+        #    epsilon = K.random_normal(shape=K.shape(self.mu), mean=0., stddev=1.)
+        #    sample_points = mu + K.exp(log_variance/2) * epsilon
+        #    return sample_points
 
-        output = tfl.Lambda(sample_point_from_normal_distribution, name="encoder_output")([self.mu, self.log_variance])
+        #output = tfl.Lambda(sample_point_from_normal_distribution, name="encoder_output")([self.mu, self.log_variance])
+        output = self.mu #back to Autoencoder and try
 
         self._model_input = input
         self.encoder = Model(input, output, name="encoder")
@@ -168,15 +181,22 @@ class VAE():
     def loss(self, y, y_pred):
         reconstruction_loss = _calculate_reconstruction_loss(y, y_pred)
         kl_loss = calculate_kl_loss(self)()
-        return self.vae_alpha * reconstruction_loss + kl_loss
+        return reconstruction_loss + self.vae_beta * kl_loss
 
     def compile(self, learning_rate=0.002):
         optimizer = Adam(learning_rate=learning_rate)
-        self.model.compile(optimizer=optimizer,
-                           loss=self.loss,
-                           metrics=[_calculate_reconstruction_loss, calculate_kl_loss(self)])
+        self.model.compile(optimizer=optimizer, loss=MeanSquaredError(),
+                            metrics=[mse_with_zero])
+                           #loss=self.loss,
+                           #metrics=[_calculate_reconstruction_loss, calculate_kl_loss(self)])
 
     def train(self, x_train, y_train, x_val, y_val, batch_size, num_epochs):
+        if self.scale == 1:
+            self.scale = np.square(np.mean(y_train))
+        y_train = y_train / self.scale
+        y_val = y_val / self.scale
+        x_train = x_train / self.scale
+        x_val = x_val / self.scale
         self.model.fit(x_train, 
                        y_train, 
                        batch_size=batch_size,
@@ -189,7 +209,25 @@ class VAE():
         return x
     
     def predict(self, x):
-        return self.model.predict(x)
+        return self.model.predict(x/self.scale) * self.scale
+
+    def eval(self, x, y_true):
+        y = self.predict(x)
+        return museval.evaluate([y_true], [y], SR, SR)
+
+    def reconstruct(self, path):
+        seglen = self.input_shape[0]
+        wav, orig_sr = sf.read(path)
+        wavr = librosa.resample(wav, orig_sr=orig_sr, target_sr=SR)
+        x = split_wav(wavr, seglen)
+        y = self.predict(x)
+        ry = np.reshape(y, (y.shape[0]*y.shape[1],y.shape[2]))[:wavr.size]
+        r = librosa.resample(ry, orig_sr=SR, target_sr=orig_sr)
+        assert wav.shape == r.shape
+        sf.write("out.wav", r, orig_sr)
+        print(np.mean(wav), np.mean(r))
+        return r
+
 
 if __name__ == "__main__":
     model = VAE(
@@ -199,4 +237,4 @@ if __name__ == "__main__":
         conv_strides=(1,2,2,1),
         latent_dim=2,
     )
-    model.summary()
+    #model.summary()

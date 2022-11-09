@@ -2,7 +2,15 @@ import librosa
 import os
 import stempeg
 import pickle
+import numpy as np
 
+def split_wav(wav, seglen):
+    length = wav.shape[0]
+    N = length // seglen + 1
+    wav = np.pad(wav, [(0, N*seglen-length),(0,0)])
+    return np.reshape(wav, (N,seglen,1))
+            
+            
 class Preprocess():
     def __init__(self,
                  input_dir=".",
@@ -41,6 +49,7 @@ class Preprocess():
                     ed = length
                 stempeg.write_audio(os.path.join(self.output_dir, f"mix_{fno}_{i}_orig.wav"), mix[st:ed], output_sample_rate=22050)
                 stempeg.write_audio(os.path.join(self.output_dir, f"voc_{fno}_{i}_orig.wav"), voc[st:ed], output_sample_rate=22050)
+
     def dump_wav(self, path):
         dir = os.path.dirname(path)
         fname = os.path.basename(path)
