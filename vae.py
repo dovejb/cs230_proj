@@ -41,6 +41,7 @@ class VAE():
                  latent_dim = 2,
                  vae_beta = 0.001,
                  scale = 1,
+                 bias = 0,
                  ):
 
         self.input_shape = input_shape   
@@ -50,6 +51,7 @@ class VAE():
         self.latent_dim = latent_dim
         self.vae_beta = vae_beta
         self.scale = scale
+        self.bias = bias
 
         self._conv_layer = tfl.Conv2D
         self._convtranspose_layer = tfl.Conv2DTranspose
@@ -78,6 +80,7 @@ class VAE():
             self.latent_dim,
             self.vae_beta,
             self.scale,
+            self.bias,
         ]
         with open(os.path.join(folder, "parameters.pkl"), "wb") as f:
             pickle.dump(parameters, f)
@@ -191,12 +194,10 @@ class VAE():
                            #metrics=[_calculate_reconstruction_loss, calculate_kl_loss(self)])
 
     def train(self, x_train, y_train, x_val, y_val, batch_size, num_epochs):
-        if self.scale == 1:
-            self.scale = np.square(np.mean(y_train))
-        y_train = y_train / self.scale
-        y_val = y_val / self.scale
-        x_train = x_train / self.scale
-        x_val = x_val / self.scale
+        y_train = y_train * self.scale + self.bias
+        y_val = y_val * self.scale + self.bias
+        x_train = x_train * self.scale + self.bias
+        x_val = x_val * self.scale + self.bias
         self.model.fit(x_train, 
                        y_train, 
                        batch_size=batch_size,
@@ -209,7 +210,7 @@ class VAE():
         return x
     
     def predict(self, x):
-        return self.model.predict(x/self.scale) * self.scale
+        return (self.model.predict(x*self.scale+self.bias) - self.bias) / self.scale
 
     def eval(self, x, y_true):
         y = self.predict(x)

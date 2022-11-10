@@ -3,8 +3,29 @@ import librosa
 import soundfile as sf 
 import numpy as np
 
-SR = 22050
+import scipy.io.wavfile as wav
+import scipy.signal as signal
+from matplotlib import pyplot as plt
+from constants import *
 
+def load_train_spectrums():
+    x, y = load_train_datasets()
+    _, _, zx = signal.stft(x.squeeze(2), fs=SR, nperseg=512, axis=1)
+    f, _, zy = signal.stft(y.squeeze(2), fs=SR, nperseg=512, axis=1)
+    fstart = f.size - SPEC_SHAPE[0]
+    tend = SPEC_SHAPE[1]
+    return zx[:,fstart:,:tend,np.newaxis], zy[:,fstart:,:tend,np.newaxis]
+
+# output shape: [N, freq_bin_N, time_series, 1]
+def load_test_spectrums():
+    x, y = load_test_datasets()
+    _, _, zx = signal.stft(x.squeeze(2), fs=SR, nperseg=512, axis=1)
+    f, _, zy = signal.stft(y.squeeze(2), fs=SR, nperseg=512, axis=1)
+    fstart = f.size - SPEC_SHAPE[0]
+    tend = SPEC_SHAPE[1]
+    return zx[:,fstart:,:tend,np.newaxis], zy[:,fstart:,:tend,np.newaxis]
+
+# output shape: [N, track, 1]
 def load_train_datasets():
     x, y = load_datasets("i:/dl/train")
     return x[...,np.newaxis], y[...,np.newaxis]
@@ -52,23 +73,25 @@ def load_datasets(dir, length=352800):
         np.save(f, voc)
     return mix, voc
 if __name__ == '__main__':
-    x_test, y_test = load_test_datasets()
-    print(x_test.shape)
-    print(x_test)
-    exit()
-    import scipy.io.wavfile as wav
-    import scipy.signal as signal
-    from matplotlib import pyplot as plt
+    if False:
+        zx, zy = load_test_spectrums()
+        print(zx.shape, zy.shape)
+        print(zx[0,0,:])
+        print(zx[9,:,0])
 
     #sample_rate, samples = wav.read("i:/dl/train/mix_1_2_orig.wav")
-    samples, sample_rate= sf.read("i:/dl/train/mix_1_2_orig.wav")
-    #samples, sample_rate= sf.read("i:/dl/A Classic Education - NightOwl.stem.wav")
+    #samples, sample_rate= sf.read("i:/dl/train/mix_1_2_orig.wav")
+    samples, sample_rate= sf.read("i:/dl/A Classic Education - NightOwl.stem.wav")
     print(sample_rate)
-    print(samples)
     print(samples.shape)
     samples = np.sum(samples, axis=1)
     print(samples.shape, samples)
-    f, t, Zxx = signal.stft(samples, fs=sample_rate)
+    f, t, Zxx = signal.stft(samples, fs=sample_rate, nperseg=1024)
+    print(f.shape, t.shape, Zxx.shape)
+    print(f)
+    print(t)
+    for i in range(10):
+        print(i, np.mean(Zxx[:,i]))
     plt.pcolormesh(t, f, np.abs(Zxx), cmap='plasma')
     plt.show()
     #plt.specgram(samples.transpose(), cmap='plasma', Fs=sample_rate)
