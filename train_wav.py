@@ -1,15 +1,16 @@
 from datasets import *
 from constants import *
-from vae import VAE
+from vae import AutoEncoder
 import tensorflow as tf
 import numpy as np
 
+# train with wav(sequential) data
 def train(learning_rate=LEARNING_RATE, batch_size=BATCH_SIZE, epochs=EPOCHS):
     try:
-        model = VAE.load(MODEL_SAVEDIR_WAV)
+        model = AutoEncoder.load(MODEL_SAVEDIR_WAV)
         print("Loaded saved model")
     except:
-        model = VAE(
+        model = AutoEncoder(
             input_shape=WAV_SHAPE,
             conv_filters=(2,4,8,8,16,16),
             conv_kernels=(3,3,3,3,3,3),

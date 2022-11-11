@@ -13,14 +13,20 @@ import soundfile as sf
 import librosa
 from constants import *
 from preprocess import split_wav
+from evaluate import new_sdr
 
 
-#tf.compat.v1.disable_eager_execution()
-
+# A metric to calculate MSE with all zero matrix
+# because my y_true is too close to zero, and my model is trained to make
+# y_pred close to zero, too
+# but this seems already solved by bias
 def mse_with_zero(y, y_pred):
     return K.mean(K.square(y_pred))
 
-def _calculate_reconstruction_loss(y, y_pred):
+# These two loss functions are to calculate MSE and KL loss for VAE
+# but my VAE model has gradient exploding
+# so I use AutoEncoder now and this loss is not used.
+def calculate_mse_loss(y, y_pred):
     error = y - y_pred
     reconstruction_loss = K.mean(K.square(error))
     return reconstruction_loss
@@ -32,7 +38,13 @@ def calculate_kl_loss(model):
         return kl_loss
     return _calculate_kl_loss
 
-class VAE():
+
+# AutoEncoder
+# The conv & conv transpose layer are defined by parameters
+# This is just for convenience
+# And the dimension is decided by parameter, too.
+# If input_shape is 2 dim, it uses Conv1D
+class AutoEncoder():
     def __init__(self,
                  input_shape = [28, 28, 1], #[H,W,C]  if length is 2, use Conv1D
                  conv_filters = [2, 4, 8],
@@ -40,8 +52,8 @@ class VAE():
                  conv_strides = [1, 2, 2],
                  latent_dim = 2,
                  vae_beta = 0.001,
-                 scale = 1,
-                 bias = 0,
+                 scale = 1,     # This scales the input X&Y at the same time to solve the Y-close-to-zero issue, but the bias seems more useful
+                 bias = 0,      # Same as above
                  ):
 
         self.input_shape = input_shape   
@@ -90,7 +102,7 @@ class VAE():
     def load(cls, folder="."):
         with open(os.path.join(folder, "parameters.pkl"), "rb") as f:
             parameters = pickle.load(f)
-        inst = VAE(*parameters)
+        inst = AutoEncoder(*parameters)
         inst.model.load_weights(os.path.join(folder, "weights.h5"))
         return inst
 
@@ -182,9 +194,9 @@ class VAE():
         self.model = Model(input, output, name="model")
 
     def loss(self, y, y_pred):
-        reconstruction_loss = _calculate_reconstruction_loss(y, y_pred)
+        mse_loss = calculate_mse_loss(y, y_pred)
         kl_loss = calculate_kl_loss(self)()
-        return reconstruction_loss + self.vae_beta * kl_loss
+        return mse_loss + self.vae_beta * kl_loss
 
     def compile(self, learning_rate=0.002):
         optimizer = Adam(learning_rate=learning_rate)
@@ -214,8 +226,9 @@ class VAE():
 
     def eval(self, x, y_true):
         y = self.predict(x)
-        return museval.evaluate([y_true], [y], SR, SR)
+        return new_sdr(y_true, y)
 
+    # load a wav file and reconstruct it using the model
     def reconstruct(self, path):
         seglen = self.input_shape[0]
         wav, orig_sr = sf.read(path)
@@ -231,11 +244,11 @@ class VAE():
 
 
 if __name__ == "__main__":
-    model = VAE(
+    model = AutoEncoder(
         input_shape=(28,28,1),
         conv_filters=(32,64,64,64),
         conv_kernels=(3,3,3,3),
         conv_strides=(1,2,2,1),
         latent_dim=2,
     )
-    #model.summary()
+    model.summary()

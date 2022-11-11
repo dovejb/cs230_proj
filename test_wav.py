@@ -1,4 +1,4 @@
-from vae import VAE, _calculate_reconstruction_loss
+from vae import AutoEncoder, calculate_mse_loss
 from constants import *
 from datasets import *
 import tensorflow as tf
@@ -23,7 +23,7 @@ if __name__ == '__main__':
     print(test_loss(y_test,np.zeros(y_test.shape)))
     print(np.mean(y_test))
     exit(0)
-    model = VAE.load(MODEL_SAVEDIR_WAV)
+    model = AutoEncoder.load(MODEL_SAVEDIR_WAV)
     y = model.reconstruct("i:/dl/A Classic Education - NightOwl.stem.wav")
     print(y)
     print(y.shape)

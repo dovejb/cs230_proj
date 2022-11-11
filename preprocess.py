@@ -3,6 +3,7 @@ import os
 import stempeg
 import pickle
 import numpy as np
+from constants import *
 
 def split_wav(wav, seglen):
     length = wav.shape[0]
@@ -11,6 +12,7 @@ def split_wav(wav, seglen):
     return np.reshape(wav, (N,seglen,1))
             
             
+# Split music data into 16s segments
 class Preprocess():
     def __init__(self,
                  input_dir=".",
@@ -35,6 +37,7 @@ class Preprocess():
             fno += 1
             self.preprocess(f, fno)
 
+    # preprocess 1 file
     def preprocess(self, f, fno):
             rpath = os.path.join(self.input_dir,f) 
             mix, _ = stempeg.read_stems(rpath, stem_id=[0])
@@ -47,8 +50,8 @@ class Preprocess():
                 ed = (i+1) * seglen
                 if ed > length:
                     ed = length
-                stempeg.write_audio(os.path.join(self.output_dir, f"mix_{fno}_{i}_orig.wav"), mix[st:ed], output_sample_rate=22050)
-                stempeg.write_audio(os.path.join(self.output_dir, f"voc_{fno}_{i}_orig.wav"), voc[st:ed], output_sample_rate=22050)
+                stempeg.write_audio(os.path.join(self.output_dir, f"mix_{fno}_{i}_orig.wav"), mix[st:ed], output_sample_rate=SR)
+                stempeg.write_audio(os.path.join(self.output_dir, f"voc_{fno}_{i}_orig.wav"), voc[st:ed], output_sample_rate=SR)
 
     def dump_wav(self, path):
         dir = os.path.dirname(path)

@@ -8,6 +8,9 @@ import scipy.signal as signal
 from matplotlib import pyplot as plt
 from constants import *
 
+# output shape: [N, freq_bin_N, time_series, 1]
+# load music data in spectrum form
+# and trim them to a good shape
 def load_train_spectrums():
     x, y = load_train_datasets()
     _, _, zx = signal.stft(x.squeeze(2), fs=SR, nperseg=512, axis=1)
@@ -16,7 +19,6 @@ def load_train_spectrums():
     tend = SPEC_SHAPE[1]
     return zx[:,fstart:,:tend,np.newaxis], zy[:,fstart:,:tend,np.newaxis]
 
-# output shape: [N, freq_bin_N, time_series, 1]
 def load_test_spectrums():
     x, y = load_test_datasets()
     _, _, zx = signal.stft(x.squeeze(2), fs=SR, nperseg=512, axis=1)
@@ -26,6 +28,7 @@ def load_test_spectrums():
     return zx[:,fstart:,:tend,np.newaxis], zy[:,fstart:,:tend,np.newaxis]
 
 # output shape: [N, track, 1]
+# load music data in wav form
 def load_train_datasets():
     x, y = load_datasets("i:/dl/train")
     return x[...,np.newaxis], y[...,np.newaxis]
@@ -33,6 +36,8 @@ def load_test_datasets():
     x, y = load_datasets("i:/dl/test")
     return x[...,np.newaxis], y[...,np.newaxis]
 
+
+# load data from disk
 def load_datasets(dir, length=352800):
     files = os.listdir(dir)
     if "mix.npy" in files and "voc.npy" in files:
