@@ -22,7 +22,7 @@ if __name__ == '__main__':
         v = "voc" + f[3:]
         mixpath = os.path.join(dir, f)
         vocpath = os.path.join(dir, v)
-        vocout = f"{v[:-8]}aug_9.wav"
+        vocout = f"{v[:-8]}aug_4.wav"
 
         if vocout in files:
             print("Skip augmented file:", f)

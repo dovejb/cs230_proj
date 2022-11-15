@@ -9,3 +9,5 @@ SR=22050
 
 MODEL_SAVEDIR_WAV = "./wav"
 MODEL_SAVEDIR_SPEC = "./spec"
+
+TORCH=True
