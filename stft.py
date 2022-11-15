@@ -27,7 +27,9 @@ class STFT(nn.Module):
         # here z is [N, F, T, 2]
         _, freqs, frames, channels = z.shape
         # need [N, 2, F, T]
-        return z.permute(0, 3, 1, 2)
+        z = z.permute(0, 3, 1, 2)
+        # make F&T even
+        return z[:,:,1:,:-1]
 
 class ISTFT(nn.Module):
     def __init__(self):
@@ -39,6 +41,8 @@ class ISTFT(nn.Module):
         :return: [N, 1, L]
         """
         assert z.dim() == 4
+        # add the axis dropped when STFT
+        z = torch.nn.functional.pad(z, (0,1,1,0))
         # need z [N,F,T,2]
         z = z.permute(0,2,3,1)
         n, freqs, _, _ = z.shape

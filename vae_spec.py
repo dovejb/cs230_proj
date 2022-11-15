@@ -3,6 +3,7 @@ from torch import Tensor
 from torch import nn
 from torch.nn import functional as F
 from stft import STFT, ISTFT
+from torchinfo import summary
 
 from typing import List, Tuple
 
@@ -10,7 +11,6 @@ class SpecVAE(nn.Module):
     def __init__(self,
                  wav_length: int,
                  latent_dim: int,
-                 in_channels: int = 1,
                  beta: float = 0.01,
                  hidden_dims: List = None) -> None:
         super(SpecVAE, self).__init__()
@@ -20,12 +20,14 @@ class SpecVAE(nn.Module):
 
         modules = []
         if hidden_dims is None:
-            hidden_dims = [32, 64, 128, 256, 512]
+            hidden_dims = [4,16,32,64,128]
         self.hidden_dims = hidden_dims
 
         modules.append(
             STFT(),
         )
+
+        in_channels = 2 # don't return complex, and it's always 2 after STFT
         
         for h_dim in hidden_dims:
             modules.append(
@@ -35,19 +37,24 @@ class SpecVAE(nn.Module):
                               kernel_size=3,
                               stride=2,
                               padding=1,
-                              dtype=torch.cfloat,
                     ),
-                    nn.BatchNorm2d(h_dim, dtype=torch.cfloat),
+                    nn.BatchNorm2d(h_dim),
                     nn.LeakyReLU(),
                 )
             )
             in_channels = h_dim
         
         self.encoder = nn.Sequential(*modules)
-        self.fc_mu = nn.Linear(hidden_dims[-1]*4, latent_dim, dtype=torch.cfloat)
-        self.fc_var = nn.Linear(hidden_dims[-1]*4, latent_dim, dtype=torch.cfloat)
+        summary(self.encoder, (32,1,352256))
+        # use summary to get this number!
+        self.size_before_bottleneck = 89088 
+        self.fc_mu = nn.Linear(self.size_before_bottleneck, latent_dim)
+        self.fc_var = nn.Linear(self.size_before_bottleneck, latent_dim)
 
-        self.decoder_input = nn.Linear(latent_dim, hidden_dims[-1]*4, dtype=torch.cfloat)
+
+        # for decoder
+        modules = []
+        self.decoder_input = nn.Linear(latent_dim, self.size_before_bottleneck)
         hidden_dims.reverse()
 
         for i in range(len(hidden_dims)-1):
@@ -59,9 +66,8 @@ class SpecVAE(nn.Module):
                                         stride=2,
                                         padding=1,
                                         output_padding=1,
-                                        dtype=torch.cfloat,
                     ),
-                    nn.BatchNorm2d(hidden_dims[i+1],dtype=torch.cfloat),
+                    nn.BatchNorm2d(hidden_dims[i+1]),
                     nn.LeakyReLU(),
                 )
             )
@@ -75,15 +81,13 @@ class SpecVAE(nn.Module):
                                 stride=2,
                                 padding=1,
                                 output_padding=1,
-                                dtype=torch.cfloat,
             ),
-            nn.BatchNorm2d(hidden_dims[-1],dtype=torch.cfloat),
+            nn.BatchNorm2d(hidden_dims[-1]),
             nn.LeakyReLU(),
             nn.Conv2d(hidden_dims[-1], 
                         out_channels=1,
                         kernel_size=3,
                         padding=1,
-                        dtype=torch.cfloat,
             ),
             ISTFT(),
         )

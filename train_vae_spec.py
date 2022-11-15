@@ -8,7 +8,10 @@ from datasets import *
 from lightning_module_spec import VocalSeparatorSpec
 
 if __name__ == '__main__':
-    model = SpecVAE(WAV_SHAPE[0], latent_dim=512)
+    model = SpecVAE(WAV_SHAPE[0], latent_dim=128)
+    from torchinfo import summary
+    summary(model, input_size=(32,1,352768))
+    exit(0)
     tb_logger = TensorBoardLogger(save_dir="./log",
                                   name="spec")
     trainer = Trainer(logger=tb_logger,
