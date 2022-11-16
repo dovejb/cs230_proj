@@ -4,6 +4,7 @@ from torch import nn
 from torch.nn import functional as F
 from stft import STFT, ISTFT
 from torchinfo import summary
+import numpy as np
 
 from typing import List, Tuple
 
@@ -17,6 +18,8 @@ class SpecVAE(nn.Module):
 
         self.latent_dim = latent_dim
         self.beta = beta
+
+        self.num_iter = 0
 
         modules = []
         if hidden_dims is None:
@@ -45,16 +48,20 @@ class SpecVAE(nn.Module):
             in_channels = h_dim
         
         self.encoder = nn.Sequential(*modules)
-        summary(self.encoder, (32,1,352256))
-        # use summary to get this number!
-        self.size_before_bottleneck = 89088 
-        self.fc_mu = nn.Linear(self.size_before_bottleneck, latent_dim)
-        self.fc_var = nn.Linear(self.size_before_bottleneck, latent_dim)
+        #summary(self.encoder, (32,1,352256))
+        # use summary to get this magic number!
+        self.shape_before_bottleneck = [128, 8, 86] # [C,H,W]
+        flatten_size = np.prod(self.shape_before_bottleneck)
+        self.fc_mu = nn.Linear(flatten_size, latent_dim)
+        self.fc_var = nn.Linear(flatten_size, latent_dim)
 
 
         # for decoder
         modules = []
-        self.decoder_input = nn.Linear(latent_dim, self.size_before_bottleneck)
+        self.decoder_input = nn.Linear(latent_dim, flatten_size)
+        modules.append(
+            Reshape(self.shape_before_bottleneck)
+        )
         hidden_dims.reverse()
 
         for i in range(len(hidden_dims)-1):
@@ -85,7 +92,7 @@ class SpecVAE(nn.Module):
             nn.BatchNorm2d(hidden_dims[-1]),
             nn.LeakyReLU(),
             nn.Conv2d(hidden_dims[-1], 
-                        out_channels=1,
+                        out_channels=2,
                         kernel_size=3,
                         padding=1,
             ),
@@ -153,3 +160,12 @@ class SpecVAE(nn.Module):
     
     def generate(self, x: Tensor, **kwargs) -> Tensor:
         return self.forward(x)[0]
+
+class Reshape(nn.Module):
+    def __init__(self, shape):
+        super(Reshape, self).__init__()
+        self.shape = shape
+    def forward(self, x:Tensor):
+        size = np.prod(x.shape)
+        N = size // np.prod(self.shape)
+        return x.view(N, *self.shape)

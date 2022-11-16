@@ -33,9 +33,9 @@ class MyDataset(LightningDataModule):
         self.train = TrainSet()
         self.test = TestSet()
     def train_dataloader(self):
-        return DataLoader(self.train, self.batch_size, True)
+        return DataLoader(self.train, self.batch_size, True, num_workers=1)
     def val_dataloader(self):
-        return DataLoader(self.test, self.batch_size, False)
+        return DataLoader(self.test, self.batch_size, False, num_workers=1)
 
 
 # output shape: [N, freq_bin_N, time_series, 1]
@@ -72,12 +72,14 @@ def load_test_spectrums():
 def load_train_datasets():
     x, y = load_datasets("i:/dl/train")
     if TORCH:
-        return x[:,np.newaxis,:], y[:,np.newaxis,:]
+        # [N, C, L]
+        return x[:,np.newaxis,:WAV_SHAPE[0]], y[:,np.newaxis,:WAV_SHAPE[0]]
     return x[...,np.newaxis], y[...,np.newaxis]
 def load_test_datasets():
     x, y = load_datasets("i:/dl/test")
     if TORCH:
-        return x[:,np.newaxis,:], y[:,np.newaxis,:]
+        # [N, C, L]
+        return x[:,np.newaxis,:WAV_SHAPE[0]], y[:,np.newaxis,:WAV_SHAPE[0]]
         #return x, y
     return x[...,np.newaxis], y[...,np.newaxis]
 
