@@ -1,6 +1,8 @@
 import pytorch_lightning as pl
+import torch.nn.functional as F
 from torch import nn, Tensor
 from torch import optim
+from constants import *
 
 class VocalSeparatorSpec(pl.LightningModule):
     def __init__(self,
@@ -17,24 +19,32 @@ class VocalSeparatorSpec(pl.LightningModule):
 
     def training_step(self, batch, batch_idx, optimizer_idx = 0):
         x, y = batch
-        results = self.forward(x)
+        yhat = self.forward(x)
+        loss = self.model.loss_function(yhat, y)
+        """
         train_loss = self.model.loss_function(y,
                                             *results, 
                                             optimizer_idx=optimizer_idx, 
                                             batch_idx=batch_idx)
         self.log_dict({key: val.item() for key, val in train_loss.items()}, sync_dist=True)
+        """
+        self.log_dict({"loss":loss})
 
-        return train_loss['loss']
+        return loss
 
     def validation_step(self, batch, batch_idx, optimizer_idx=0):
         x, y = batch
+        yhat = self.forward(x)
+        loss = self.model.loss_function(yhat, y)
+        self.log_dict({"val_loss": loss})
+        """
         results = self.forward(x)
         val_loss = self.model.loss_function(y, 
                                             *results, 
                                             optimizer_idx=optimizer_idx, 
                                             batch_idx=batch_idx)
         self.log_dict({f"val_{key}": val.item() for key, val in val_loss.items()}, sync_dist=True)
-
+        """
     def on_validation_end(self) -> None:
         pass
 

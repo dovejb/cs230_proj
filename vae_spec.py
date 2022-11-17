@@ -130,7 +130,8 @@ class SpecVAE(nn.Module):
     def forward(self, input: Tensor, **kwargs) -> Tensor:
         mu, log_var = self.encode(input)
         z = self.reparameterize(mu, log_var)
-        return [self.decode(z), input, mu, log_var]
+        y = self.decode(z)
+        return [y, input, mu, log_var]
 
     def loss_function(self,
                       y,
@@ -141,13 +142,16 @@ class SpecVAE(nn.Module):
         input = args[1]
         mu = args[2]
         log_var = args[3]
-        
+
         recons_loss = F.mse_loss(recons, y)
         kld_loss = torch.mean(-0.5 * torch.sum(1+log_var-mu**2 - log_var.exp(), dim=1), dim=0)
 
         loss = recons_loss + self.beta * kld_loss
 
         return {'loss': loss, 'Reconstruction-Loss': recons_loss, 'KLD': kld_loss}
+    
+    def reconstruction_loss(self, yhat, y):
+        return F.mse_loss(yhat, y)
 
     def sample(self,
                num_samples:int,
@@ -160,6 +164,7 @@ class SpecVAE(nn.Module):
     
     def generate(self, x: Tensor, **kwargs) -> Tensor:
         return self.forward(x)[0]
+
 
 class Reshape(nn.Module):
     def __init__(self, shape):

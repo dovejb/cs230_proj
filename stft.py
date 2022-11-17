@@ -75,3 +75,6 @@ if __name__ == '__main__':
     loss = nn.MSELoss()
     print("loss1", loss(x_, x))
     print("loss2", loss(x, x_))
+    print("tz mean", torch.mean(tz))
+    print("x mean", torch.mean(x))
+    print("y mean", np.mean(y))

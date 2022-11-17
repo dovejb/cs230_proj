@@ -10,32 +10,38 @@ from constants import *
 from torch.utils.data import Dataset, DataLoader
 from pytorch_lightning import LightningDataModule
 
-class TrainSet(Dataset):
-    def __init__(self):
-        self.x, self.y = load_train_datasets()
+class AudioSegments(Dataset):
+    def __init__(self, dir:str):
+        files = sorted(os.listdir(dir))
+        self.dir = dir
+        self.files = []
+        for f in files:
+            if not f.startswith("x_"):
+                continue
+            self.files.append(f[1:])
     def __len__(self):
-        return len(self.x)
+        return len(self.files)
     def __getitem__(self, index):
-        return self.x[index], self.y[index]
-class TestSet(Dataset):
-    def __init__(self):
-        self.x, self.y = load_test_datasets()
-    def __len__(self):
-        return len(self.x)
-    def __getitem__(self, index):
-        return self.x[index], self.y[index]
-
+        ff = self.files[index]
+        xfn = self.dir + "/x"+ff
+        yfn = self.dir + "/y"+ff
+        with open(xfn, 'rb') as f:
+            x = np.load(f)
+        with open(yfn, 'rb') as f:
+            y = np.load(f)
+        return x[:WAV_SHAPE[0]], y[:WAV_SHAPE[0]]
+        
 
 class MyDataset(LightningDataModule):
-    def __init__(self, batch_size=32):
+    def __init__(self, batch_size=BATCH_SIZE):
         super().__init__()
         self.batch_size = batch_size
-        self.train = TrainSet()
-        self.test = TestSet()
+        self.train = AudioSegments("i:/dl/train/s")
+        self.test = AudioSegments("i:/dl/test/s")
     def train_dataloader(self):
-        return DataLoader(self.train, self.batch_size, True, num_workers=1)
+        return DataLoader(self.train, self.batch_size, True, num_workers=2)
     def val_dataloader(self):
-        return DataLoader(self.test, self.batch_size, False, num_workers=1)
+        return DataLoader(self.test, self.batch_size, False, num_workers=2)
 
 
 # output shape: [N, freq_bin_N, time_series, 1]
@@ -83,30 +89,26 @@ def load_test_datasets():
         #return x, y
     return x[...,np.newaxis], y[...,np.newaxis]
 
-memory_cache = {}
-
 # load data from disk
-def load_datasets(dir, length=352800):
-    if dir in memory_cache.keys():
-        return memory_cache[dir]
+def load_datasets(dir, length=WAV_SHAPE[0]):
     files = os.listdir(dir)
-    if "mix.npy" in files and "voc.npy" in files:
-        with open(os.path.join(dir, "mix.npy"), "rb") as f:
-            mix = np.load(f)
-        with open(os.path.join(dir, "voc.npy"), "rb") as f:
-            voc = np.load(f)
-        return mix, voc
-    mix = []
-    voc = []
+    i=0
     for f in sorted(files):
-        if "_aug_" in f: # do not use aug data now
-            continue
+        #if "_aug_" in f: # do not use aug data now
+        #    continue
         if not f.endswith(".wav") or f.startswith("voc"):
             continue
         mixpath = os.path.join(dir, f)
         vocpath = os.path.join(dir, "voc"+f[3:])
         m, _ = librosa.load(mixpath)
         v, _ = librosa.load(vocpath)
+        if not np.any(m):
+            print("Invalid mix:", mixpath)
+            continue
+        if not np.any(v):
+            print("Invalid mix:", vocpath)
+            continue
+        continue
         if len(m) < length:
             left = (length-len(m))//2
             right = length-len(m)-left
@@ -115,27 +117,30 @@ def load_datasets(dir, length=352800):
         elif len(m) > length:
             m = m[:length]
             v = v[:length]
-        mix.append(m)
-        voc.append(v)
         if len(m) != length:
             print("length error", f, len(m), len(v))
             break
-    
-    mix, voc = np.array(mix), np.array(voc)
-    with open(os.path.join(dir, "mix.npy"), "wb") as f:
-        np.save(f, mix)
-    with open(os.path.join(dir, "voc.npy"), "wb") as f:
-        np.save(f, voc)
+        spath = os.path.join(dir, "s")
+        if not os.path.exists(spath):
+            os.makedirs(spath)
+        print(f"handling {dir} - {i}")
+        xfp = os.path.join(spath, f"x_{i}.npy")
+        yfp = os.path.join(spath, f"y_{i}.npy")
+        with open(xfp, 'wb') as f:
+            np.save(f, m)
+        with open(yfp, 'wb') as f:
+            np.save(f, v)
+        i+=1
 
-    memory_cache[dir] = (mix, voc)
-    return mix, voc
 if __name__ == '__main__':
-    if False:
-        zx, zy = load_test_spectrums()
-        print(zx.shape, zy.shape)
-        print(zx[0,0,:])
-        print(zx[9,:,0])
-
+    x, _ = librosa.load("i:/dl/test/mix_19_0_orig.wav")
+    print(x)
+    print(x.shape)
+    print(np.any(x))
+    exit()
+    load_datasets("i:/dl/test")
+    load_datasets("i:/dl/train")
+    exit()
     #sample_rate, samples = wav.read("i:/dl/train/mix_1_2_orig.wav")
     #samples, sample_rate= sf.read("i:/dl/train/mix_1_2_orig.wav")
     samples, sample_rate= sf.read("i:/dl/A Classic Education - NightOwl.stem.wav")

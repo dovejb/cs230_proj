@@ -35,6 +35,7 @@ class Preprocess():
             if not f.endswith(self.ext):
                 continue
             fno += 1
+            print(f"Handling {fno} / {len(filenames)}, {f}")
             self.preprocess(f, fno)
 
     # preprocess 1 file
@@ -43,7 +44,7 @@ class Preprocess():
             mix, _ = stempeg.read_stems(rpath, stem_id=[0])
             voc, _ = stempeg.read_stems(rpath, stem_id=[4])
             length = len(mix)
-            seglen = 16 * 44100  # 16s per segment
+            seglen = 4 * 44100  # 4s per segment
             N = length // seglen + 1
             for i in range(N):
                 st = i * seglen
@@ -63,8 +64,11 @@ class Preprocess():
         #stempeg.write_audio(oname, s)
                 
 if __name__ == '__main__':
-    p = Preprocess(input_dir="e:/stanford/cs230/datasets/musdb18/test",
-                   output_dir="i:/dl/test")
-    p.run()
+    Preprocess(input_dir="e:/stanford/cs230/datasets/musdb18/test",
+                output_dir="i:/dl/test",
+                ).run()
+    Preprocess(input_dir="e:/stanford/cs230/datasets/musdb18/train",
+                output_dir="i:/dl/train",
+                ).run()
     #p.dump_wav("i:/dl/train/mix_1_5_orig.pkl")
     
