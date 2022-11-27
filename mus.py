@@ -13,12 +13,16 @@ import matplotlib.pyplot as plt
 
 #def mus_segments(n):
 class Muset(Dataset):
-    def __init__(self, n=2000, subset='train'):
+    def __init__(self, n=20000, subset='train',postproc=None):
+        """
+            postproc: input (x,y) output (x,y)
+        """
         self.mus = musdb.DB("./musdb_wav", is_wav=True, subsets=subset)
         self.rnd = np.random.RandomState()
         #self.rnd.seed(20210503)
         self.n = n
         self.subset = subset
+        self.postproc = postproc
     def generator(self, n):
         for i in range(n):
             track = self.rnd.choice(self.mus.tracks)
@@ -37,6 +41,8 @@ class Muset(Dataset):
         with open(xp, 'rb') as xf, open(yp, 'rb') as yf:
             x, y = np.load(xf), np.load(yf)
         x, y = x.astype('float32'), y.astype('float32')
+        if self.postproc is not None:
+            x,y = self.postproc(x,y)
         return x,y
 
 class Single(Dataset):

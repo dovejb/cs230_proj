@@ -13,8 +13,17 @@ from models.swave.swave import SWave
 from wave_cnn import WaveCNN
 import soundfile as sf
 
-NAME="wave_cnn"
-LEN=16000
+NAME="wave_cnn_full"
+LEN=8000
+
+def dataproc(x,y):
+    start=0
+    maxlen=LEN
+    def proc(x):
+        x = x[...,start:start+maxlen]
+        x = x.reshape(1,-1)
+        return x
+    return proc(x), proc(y)
 
 if __name__ == '__main__':
     model = WaveCNN(wave_length=LEN, block_num=8, res_kernel=7, res_loop_count=1, initial_n_chan=2048)
@@ -42,19 +51,12 @@ if __name__ == '__main__':
                       #resume_from_checkpoint=f"./log/{NAME}/version_2/checkpoints/last.ckpt",
                       check_val_every_n_epoch=100,
                       )
+    #data = SingleModule(postproc=dataproc)
     #data = MusModule(n_train=16,n_test=16)
-    def dataproc(x,y):
-        start=20000
-        maxlen=LEN
-        def proc(x):
-            x = x[...,start:start+maxlen]
-            x = x.reshape(1,-1)
-            return x
-        return proc(x), proc(y)
-    data = SingleModule(postproc=dataproc)
-    y = data.dataset[0][1].reshape(-1)
-    sf.write(f"./out/{NAME}_y.wav", y, SR)
-    module = VocalSeparator(model, 1e-3, name=NAME)
+    #y = data.dataset[0][1].reshape(-1)
+    #sf.write(f"./out/{NAME}_y.wav", y, SR)
+    data = MusModule(batch_size=100,postproc=dataproc)
+    module = VocalSeparator(model, 1e-4, name=NAME)
 
     trainer.fit(module, data)
     torch.save(module.model, f"./{NAME}.model")

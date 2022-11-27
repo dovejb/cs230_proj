@@ -40,7 +40,7 @@ class VocalSeparator(pl.LightningModule):
         loss = self.model.loss_function(y, yhat, x=x)
         self.log_dict({"val_"+l[0]:l[1] for l in loss})
         # dump the 0th sample
-        self.dump(yhat[0])
+        #self.dump(yhat[0])
 
     def dump(self, yhat:Tensor):
         yhat = yhat.view(yhat.shape[-1])

@@ -54,7 +54,8 @@ class WaveCNN(nn.Module):
                     block_num=3,
                     res_loop_count=3,
                     initial_n_chan=512,
-                    res_kernel=3,
+                    res_kernel=7,
+                    chan_reduce_rate=2,
                     ):
         super(WaveCNN, self).__init__()
 
@@ -63,6 +64,7 @@ class WaveCNN(nn.Module):
         self.block_num = block_num
         self.res_loop_count = res_loop_count
         self.res_kernel = res_kernel
+        self.chan_reduce_rate = chan_reduce_rate
 
         n_chan = initial_n_chan 
         self.conv1d = nn.Conv1d(
@@ -76,7 +78,7 @@ class WaveCNN(nn.Module):
         self.resblocks = nn.ModuleList([])
         self.pointwises = nn.ModuleList([])
         for i in range(self.block_num):
-            n_half = n_chan//2
+            n_half = int(n_chan//self.chan_reduce_rate)
             self.resblocks.append(
                 ResBlock(n_chan, kernel=self.res_kernel, loop_count=self.res_loop_count),
             )
@@ -128,10 +130,10 @@ class WaveCNN(nn.Module):
                       **kw) -> dict:
         results = []
         x = kw['x']
-        sisnr = torch.sum(evaluate.sisnr(y, yhat))
-        sisnrX = torch.sum(evaluate.sisnr(x, yhat))
-        sisnri = torch.sum(sisnr - evaluate.sisnr(y, x))
-        sdr = torch.sum(evaluate.new_sdr(y, yhat))
+        sisnr = torch.mean(evaluate.sisnr(y, yhat))
+        sisnrX = torch.mean(evaluate.sisnr(x, yhat))
+        sisnri = torch.mean(sisnr - evaluate.sisnr(y, x))
+        sdr = torch.mean(evaluate.new_sdr(y, yhat))
         mse = F.mse_loss(yhat, y)
         mean = torch.mean(yhat)-torch.mean(y)
         std = torch.std(yhat)-torch.std(y)
