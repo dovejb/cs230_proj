@@ -9,14 +9,24 @@ from mus import MusModule, SingleModule
 from lightning_module import VocalSeparator
 from convtasnet.conv_tasnet import TasNet
 import os
+from models.swave.swave import SWave
 
-NAME="tasnet"
+NAME="swave"
 
 if __name__ == '__main__':
-    #model = SpecVAE(latent_dim=128, beta=0)#1e-6)
-    model = TasNet(num_spk=1, enc_dim=1024, feature_dim=512, stack=5)
+    #model = TasNet(num_spk=1, enc_dim=1024, feature_dim=512, stack=5)
+    model = SWave(
+      N=128,    #feature_dim, the channels of encoding
+      L=8,      #kernel_size
+      H=128,    #hidden_dim
+      R=4,      #separator layer nums
+      C=1,      #num spk
+      sr=16000, #sample rate
+      segment=100, #segment duration (ms)
+      input_normalize=True,
+    )
     from torchinfo import summary
-    summary(model, input_size=(32,1,WAV_SHAPE[0]))
+    summary(model, input_size=(2,WAV_SHAPE[0]))
     tb_logger = TensorBoardLogger(save_dir="./log",
                                   name=NAME)
     trainer = Trainer(logger=tb_logger,
@@ -24,7 +34,7 @@ if __name__ == '__main__':
                         LearningRateMonitor(),
                         ModelCheckpoint(save_top_k=2,
                                         dirpath = os.path.join(tb_logger.log_dir, "checkpoints"),
-                                        monitor = "val_loss",
+                                        monitor = "val_sisnr",
                                         save_last = True,
                                         )
                       ],
@@ -37,12 +47,12 @@ if __name__ == '__main__':
                       log_every_n_steps=1,
                       gradient_clip_val=0.1,
                       auto_scale_batch_size="binsearch",
-                      resume_from_checkpoint=f"./log/{NAME}/version_2/checkpoints/last.ckpt",
-                      check_val_every_n_epoch=100,
+                      #resume_from_checkpoint=f"./log/{NAME}/version_2/checkpoints/last.ckpt",
+                      check_val_every_n_epoch=5,
                       )
-    #data = MusModule()
+    #data = MusModule(n_train=16,n_test=16)
     data = SingleModule()
-    module = VocalSeparator(model, 1e-4)
+    module = VocalSeparator(model, 1e-3)
 
     trainer.fit(module, data)
     torch.save(module.model, f"./{NAME}.model")

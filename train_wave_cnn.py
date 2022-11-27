@@ -9,14 +9,17 @@ from mus import MusModule, SingleModule
 from lightning_module import VocalSeparator
 from convtasnet.conv_tasnet import TasNet
 import os
+from models.swave.swave import SWave
+from wave_cnn import WaveCNN
+import soundfile as sf
 
-NAME="tasnet"
+NAME="wave_cnn"
+LEN=16000
 
 if __name__ == '__main__':
-    #model = SpecVAE(latent_dim=128, beta=0)#1e-6)
-    model = TasNet(num_spk=1, enc_dim=1024, feature_dim=512, stack=5)
+    model = WaveCNN(wave_length=LEN, block_num=8, res_kernel=7, res_loop_count=1, initial_n_chan=2048)
     from torchinfo import summary
-    summary(model, input_size=(32,1,WAV_SHAPE[0]))
+    summary(model, input_size=(2,1,LEN))
     tb_logger = TensorBoardLogger(save_dir="./log",
                                   name=NAME)
     trainer = Trainer(logger=tb_logger,
@@ -32,17 +35,26 @@ if __name__ == '__main__':
                       enable_progress_bar=True,
                       accelerator='gpu',
                       devices=-1,
-                      #max_epochs=400,
-                      max_epochs=-1,
+                      max_epochs=800,
                       log_every_n_steps=1,
                       gradient_clip_val=0.1,
                       auto_scale_batch_size="binsearch",
-                      resume_from_checkpoint=f"./log/{NAME}/version_2/checkpoints/last.ckpt",
+                      #resume_from_checkpoint=f"./log/{NAME}/version_2/checkpoints/last.ckpt",
                       check_val_every_n_epoch=100,
                       )
-    #data = MusModule()
-    data = SingleModule()
-    module = VocalSeparator(model, 1e-4)
+    #data = MusModule(n_train=16,n_test=16)
+    def dataproc(x,y):
+        start=20000
+        maxlen=LEN
+        def proc(x):
+            x = x[...,start:start+maxlen]
+            x = x.reshape(1,-1)
+            return x
+        return proc(x), proc(y)
+    data = SingleModule(postproc=dataproc)
+    y = data.dataset[0][1].reshape(-1)
+    sf.write(f"./out/{NAME}_y.wav", y, SR)
+    module = VocalSeparator(model, 1e-3, name=NAME)
 
     trainer.fit(module, data)
     torch.save(module.model, f"./{NAME}.model")

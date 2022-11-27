@@ -17,7 +17,7 @@ class STFT(nn.Module):
         x = x.view(n, l)
         z = torch.stft(x, 
                        self.n_fft,
-                       hop_length=self.n_fft // 4,
+                       hop_length=self.n_fft // 16,
                        window=torch.hann_window(self.n_fft).to(x),
                        win_length=self.n_fft,
                        normalized=True,
@@ -62,9 +62,10 @@ class ISTFT(nn.Module):
 
 
 if __name__ == '__main__':
-    from datasets import *
-    x, y = load_test_datasets()
-    x = torch.from_numpy(x[...,:352768])
+    from mus import *
+    x, y = Single()[0]
+    x = torch.from_numpy(x)
+    x = x.view(1,1,x.shape[-1])
     print(x.shape)
     stftm = STFT()
     tz = stftm.forward(x)

@@ -5,13 +5,14 @@ from torch.nn import functional as F
 from stft import STFT, ISTFT
 from torchinfo import summary
 import numpy as np
+from constants import *
 
 from typing import List, Tuple
 
 class SpecVAE(nn.Module):
     def __init__(self,
-                 wav_length: int,
                  latent_dim: int,
+                 wav_length: int = WAV_SHAPE[0],
                  beta: float = 0.01,
                  hidden_dims: List = None) -> None:
         super(SpecVAE, self).__init__()
@@ -48,9 +49,9 @@ class SpecVAE(nn.Module):
             in_channels = h_dim
         
         self.encoder = nn.Sequential(*modules)
-        #summary(self.encoder, (32,1,352256))
+        summary(self.encoder, (1,1,wav_length))
         # use summary to get this magic number!
-        self.shape_before_bottleneck = [128, 8, 86] # [C,H,W]
+        self.shape_before_bottleneck = [128, 8, 63] # [C,H,W]
         flatten_size = np.prod(self.shape_before_bottleneck)
         self.fc_mu = nn.Linear(flatten_size, latent_dim)
         self.fc_var = nn.Linear(flatten_size, latent_dim)
@@ -103,6 +104,9 @@ class SpecVAE(nn.Module):
         """
         :param input: (Tensor) [N, 1, L]
         """
+        if input.dim() != 3:
+            N, L = input.shape
+            input = input.view(N, 1, L)
         result = self.encoder(input)
         result = torch.flatten(result, start_dim=1)
 
@@ -139,12 +143,15 @@ class SpecVAE(nn.Module):
                       **kwargs) -> dict:
         self.num_iter += 1
         recons = args[0]
+        if recons.shape[-1] > y.shape[-1]:
+            recons = recons[...,:y.shape[-1]]
         input = args[1]
         mu = args[2]
         log_var = args[3]
 
         recons_loss = F.mse_loss(recons, y)
-        kld_loss = torch.mean(-0.5 * torch.sum(1+log_var-mu**2 - log_var.exp(), dim=1), dim=0)
+        kld_loss = 0
+        #kld_loss = torch.mean(-0.5 * torch.sum(1+log_var-mu**2 - log_var.exp(), dim=1), dim=0)
 
         loss = recons_loss + self.beta * kld_loss
 

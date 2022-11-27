@@ -1,10 +1,5 @@
-import tensorflow as tf
-import soundfile as sf
+import torch.nn.functional as F
+import torch
 
-s, rate = sf.read("i:/dl/train/voc_46_11_orig.wav")
-print(s.shape, rate)
-print(s)
-
-s, rate = sf.read("i:/dl/train/voc_46_11_orig.wav", always_2d=True)
-print(s.shape, rate)
-print(s)
+x = torch.Tensor([0.5,0.5])
+print(F.l1_loss(x, x-x))
