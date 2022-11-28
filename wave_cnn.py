@@ -5,6 +5,7 @@ from torchinfo import summary
 import numpy as np
 from constants import *
 import evaluate
+from torch.utils.data import DataLoader
 
 class ResBlock(nn.Module):
     def __init__(self,
@@ -147,14 +148,6 @@ class WaveCNN(nn.Module):
         results.append(("sisnrX",sisnrX))
 
         return results
-
-    def normalized_y(self, mean, std):
-        self.ynorm_mean = mean
-        self.ynorm_std = std
-    def denormalize_y(self, y):
-        if self.ynorm_mean is None or self.ynorm_std is None:
-            return y
-        return 
     
     def sample(self,
                num_samples:int,

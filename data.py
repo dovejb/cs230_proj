@@ -11,18 +11,22 @@ from convtasnet.utility.sdr import calc_sdr_torch, calc_sdr
 import evaluate
 import matplotlib.pyplot as plt
 
-#def mus_segments(n):
+class G:
+    load_count=0
+    cache={}
+
 class Muset(Dataset):
     def __init__(self, n=20000, subset='train',postproc=None):
         """
             postproc: input (x,y) output (x,y)
         """
-        self.mus = musdb.DB("./musdb_wav", is_wav=True, subsets=subset)
         self.rnd = np.random.RandomState()
         #self.rnd.seed(20210503)
         self.n = n
         self.subset = subset
         self.postproc = postproc
+    def load_db(self):
+        self.mus = musdb.DB("./musdb_wav", is_wav=True, subsets=self.subset)
     def generator(self, n):
         for i in range(n):
             track = self.rnd.choice(self.mus.tracks)
@@ -36,6 +40,9 @@ class Muset(Dataset):
     def __len__(self):
         return self.n
     def __getitem__(self, i):
+        key = f"{self.subset}_{i}"
+        if key in G.cache:
+            return G.cache[key]
         xp = f"./npy/{self.subset}/x_{i:05}.npy"
         yp = f"./npy/{self.subset}/y_{i:05}.npy"
         with open(xp, 'rb') as xf, open(yp, 'rb') as yf:
@@ -43,7 +50,20 @@ class Muset(Dataset):
         x, y = x.astype('float32'), y.astype('float32')
         if self.postproc is not None:
             x,y = self.postproc(x,y)
+        G.load_count+=1
+        G.cache[key] = (x,y)
         return x,y
+
+class MusModule(LightningDataModule):
+    def __init__(self, batch_size=BATCH_SIZE, n_train=20000, n_test=1000, postproc=None):
+        super().__init__()
+        self.batch_size = batch_size
+        self.train = Muset(n_train,postproc=postproc)
+        self.test = Muset(n_test, subset='test',postproc=postproc)
+    def train_dataloader(self):
+        return DataLoader(self.train, self.batch_size, True)
+    def val_dataloader(self):
+        return DataLoader(self.test, self.batch_size, False)
 
 class Single(Dataset):
     def __init__(self, idx=123, subset='train', postproc=None):
@@ -71,17 +91,6 @@ class SingleModule(LightningDataModule):
         return DataLoader(self.dataset, 1)
     def val_dataloader(self):
         return DataLoader(self.dataset, 1)
-
-class MusModule(LightningDataModule):
-    def __init__(self, batch_size=BATCH_SIZE, n_train=20000, n_test=1000, postproc=None):
-        super().__init__()
-        self.batch_size = batch_size
-        self.train = Muset(n_train,postproc=postproc)
-        self.test = Muset(n_test, subset='test',postproc=postproc)
-    def train_dataloader(self):
-        return DataLoader(self.train, self.batch_size, True, num_workers=4)
-    def val_dataloader(self):
-        return DataLoader(self.test, self.batch_size, False, num_workers=4)
 
 def dump_wav(index=0, sub='train'):
     xp = f"./npy/{sub}/x_{index:05}.npy"

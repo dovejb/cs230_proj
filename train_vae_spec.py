@@ -5,7 +5,7 @@ from pytorch_lightning import Trainer
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.utilities.seed import seed_everything
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
-from mus import MusModule, SingleModule
+from data import MusModule, SingleModule
 from lightning_module import VocalSeparator
 from convtasnet.conv_tasnet import TasNet
 import os

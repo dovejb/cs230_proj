@@ -60,9 +60,9 @@ class ISTFT(nn.Module):
         _, length = x.shape
         return x.view(n, 1, length)
 
-
+'''
 if __name__ == '__main__':
-    from mus import *
+    from preprocess import *
     x, y = Single()[0]
     x = torch.from_numpy(x)
     x = x.view(1,1,x.shape[-1])
@@ -79,3 +79,4 @@ if __name__ == '__main__':
     print("tz mean", torch.mean(tz))
     print("x mean", torch.mean(x))
     print("y mean", np.mean(y))
+'''

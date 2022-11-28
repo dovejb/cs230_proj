@@ -5,7 +5,6 @@ from constants import *
 from convtasnet.utility import sdr
 import torch.nn.functional as F
 from torchmetrics import ScaleInvariantSignalNoiseRatio
-from mus import *
 
 def new_sdr(references, estimates):
     """
@@ -50,13 +49,5 @@ def sisnri(references:torch.Tensor, estimates:torch.Tensor, mixtures:torch.Tenso
     return sisnr(references, estimates) - sisnr(references, mixtures)
 
 
-def evaluate():
-    x, y = get_all()
-    x, y = torch.from_numpy(x), torch.from_numpy(y)
-    norm = torch.randn_like(y)
-    loss = F.mse_loss
-    print("loss yn", loss(norm, y))
-    print("loss y0", loss(torch.zeros_like(y), y))
-
 if __name__ == '__main__':
-    evaluate()
+    pass
