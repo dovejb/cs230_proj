@@ -1,7 +1,7 @@
 from torch import nn, Tensor
 import torch
-from utils import pos_encoding, get_attn_local_mask
-from embedding import *
+from .utils import pos_encoding, get_attn_local_mask
+from .embedding import *
 
 """ Multi-Head Attention encoder"""
 
@@ -80,6 +80,7 @@ class Encoder(nn.Module):
         x = x.to(torch.float)
         for i in range(self.num_layers):
             x = self.encoderLayers[i].forward(x)
+        self.raw = self.embedding_layer.raw
         return x
 
 

@@ -11,6 +11,8 @@ from convtasnet.utility.sdr import calc_sdr_torch, calc_sdr
 import evaluate
 import matplotlib.pyplot as plt
 
+print("Entering data.py")
+
 class G:
     load_count=0
     cache={}

@@ -1,7 +1,7 @@
 from torch import nn, Tensor
 import torch
 from torch.nn.utils import weight_norm
-from embedding import *
+from .embedding import *
 
 """
     Temporal Convolutional Network for Mask Estimation

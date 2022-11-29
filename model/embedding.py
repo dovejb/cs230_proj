@@ -13,7 +13,6 @@ class EmbeddingSTFT(nn.Module):
     """
     def __init__(self, 
                     wave_length=8000,   # L
-                    sample_rate=16000,  # R
                     window_size=512,    # n_fft
                     hop_size=160,       # H
                     ):
@@ -23,7 +22,6 @@ class EmbeddingSTFT(nn.Module):
         """
         super(EmbeddingSTFT, self).__init__()
         self.wave_length = wave_length
-        self.sample_rate = sample_rate
         self.window_size = window_size
         self.hop_size = hop_size
         self.padding = (hop_size)//2
@@ -37,12 +35,11 @@ class EmbeddingSTFT(nn.Module):
         self.prelu = nn.PReLU(self.F)
 
         self.embedding_dim = self.F
-        self.T = wave_length // hop_size
         self.raw = None
 
     def forward(self, input:Tensor):
         x = input
-        assert x.dim() == 2 and x.shape[-1] == self.wave_length
+        assert x.dim() == 2 and x.shape[-1] == self.wave_length, f"x is {x.shape}, but require {('N',self.wave_length)}"
         x = F.pad(x, (self.padding,self.padding))
         z = torch.stft(
             x,
@@ -105,9 +102,8 @@ class EmbeddingWave(nn.Module):
     """
     def __init__(self, 
                     wave_length=8000,   # L
-                    sample_rate=16000,  # R
-                    window_size=400,    # W 25ms
-                    hop_size=160,       # H 10ms
+                    window_size=400,    # W 
+                    hop_size=160,       # H 
                     ):
         """
             input shape:  (N,L) or (N,1,L)
@@ -115,7 +111,6 @@ class EmbeddingWave(nn.Module):
         """
         super(EmbeddingWave, self).__init__()
         self.wave_length = wave_length
-        self.sample_rate = sample_rate
         self.window_size = window_size
         self.hop_size = hop_size
         self.padding = (window_size-hop_size)//2
@@ -127,7 +122,6 @@ class EmbeddingWave(nn.Module):
         self.prelu = nn.PReLU(self.C)
 
         self.embedding_dim = self.C
-        self.T = wave_length // hop_size
         self.raw = None
 
     def forward(self, input:Tensor):
@@ -155,7 +149,6 @@ class DecodeWave(nn.Module):
     def __init__(self, embed:EmbeddingWave):
         super(DecodeWave, self).__init__()
         self.wave_length = embed.wave_length
-        self.sample_rate = embed.sample_rate
         self.window_size = embed.window_size
         self.hop_size = embed.hop_size
         self.padding = embed.padding
@@ -180,10 +173,9 @@ class EmbeddingConv(nn.Module):
     """
     def __init__(self, 
                     wave_length=8000,   # L
-                    sample_rate=16000,  # R
-                    window_size=400,    # W 25ms
-                    hop_size=160,       # H 10ms
-                    feature_length=512, # C out channels in conv
+                    window_size=512,    # W 
+                    hop_size=160,       # H
+                    num_features=512, # C out channels in conv
                     ):
         """
             input shape:  (N,L) or (N,1,L)
@@ -191,10 +183,9 @@ class EmbeddingConv(nn.Module):
         """
         super(EmbeddingConv, self).__init__()
         self.wave_length = wave_length
-        self.sample_rate = sample_rate
         self.window_size = window_size
         self.hop_size = hop_size
-        self.feature_length = feature_length
+        self.num_features = num_features
 
         self.targetLout = wave_length // hop_size
         self.padding = ((self.targetLout-1) * self.hop_size + window_size - wave_length + 1) // 2
@@ -203,16 +194,17 @@ class EmbeddingConv(nn.Module):
 
         self.conv = nn.Conv1d(
             in_channels=1,
-            out_channels=self.feature_length,
+            out_channels=self.num_features,
             kernel_size=self.window_size,
             stride=self.hop_size,
             padding=self.padding,
         )
-        self.layernorm = nn.LayerNorm([self.feature_length, self.Lout])
-        self.prelu = nn.PReLU(self.feature_length)
+        self.layernorm = nn.LayerNorm([self.num_features, self.Lout])
+        self.prelu = nn.PReLU(self.num_features)
 
-        self.embedding_dim = self.feature_length
+        self.embedding_dim = self.num_features
         self.T = wave_length // hop_size
+        self.raw = None
 
     def forward(self, input:Tensor):
         x = input
@@ -222,6 +214,7 @@ class EmbeddingConv(nn.Module):
         x = self.conv(x)
         x = self.layernorm(x)
         output = self.prelu(x)
+        self.raw = output.clone()
         return output
 
 class DecodeConv(nn.Module):
@@ -232,7 +225,7 @@ class DecodeConv(nn.Module):
         super(DecodeConv, self).__init__()
 
         self.convtranspose = nn.ConvTranspose1d(
-            in_channels=embed.feature_length,
+            in_channels=embed.num_features,
             out_channels=1,
             kernel_size=embed.window_size,
             stride=embed.hop_size,
@@ -243,6 +236,8 @@ class DecodeConv(nn.Module):
     def forward(self, z:Tensor):
         z = self.convtranspose(z)
         z = self.activation(z)
+        # z is [N,1,L]
+        z = z.view(z.shape[0], z.shape[2])
         return z
 
 if __name__ == '__main__':
