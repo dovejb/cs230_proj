@@ -1,19 +1,8 @@
 import torch.nn.functional as F
+from torch import nn
 import torch
 
-class G:
-    x = 1
-
-class A:
-    def add(self):
-        G.x += 1
-    def print(self):
-        print(G.x)
-
 if __name__ == '__main__':
-    a = A()
-    b = A()
-    a.print()
-    b.print()
-    a.add()
-    b.print()
+    x = torch.randn((16,8,50))
+    x = x.view((x.shape[0], x.shape[1]//2, 2, x.shape[2]))
+    print(x.shape)
