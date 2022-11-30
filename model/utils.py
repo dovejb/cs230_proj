@@ -58,18 +58,18 @@ pos_encoding = pos_encoding.repeat(32,1,1)
 pos_encoding = pos_encoding.cuda()
 
 def get_attn_local_mask(local_size=5, T=50):
-    mask = torch.zeros((T,T),dtype=torch.float)
+    mask = torch.ones((T,T),dtype=torch.bool)
     for i in range(T):
         st, ed = i-local_size+1, i+local_size
         for j in range(st,ed):
             if j < 0 or j >= T:
                 continue
-            mask[i,j] = 1
+            mask[i,j] = False
     return mask.cuda()
 
-# prepare for MHA
-attn_mask = get_attn_local_mask(5,50)
 
 if __name__ == '__main__':
+    # prepare for MHA
+    attn_mask = get_attn_local_mask(0,50)
     for row in attn_mask:
         print(row)

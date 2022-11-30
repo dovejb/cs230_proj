@@ -72,6 +72,14 @@ class Model(nn.Module):
 
         self.loss_window = (torch.hann_window(wave_length) + torch.ones((wave_length,))) / 2
         self.loss_window = self.loss_window.cuda()
+        self.layers = [self.embed_layer, self.encoder_layer, self.mask_layer, self.output_layer]
+    def freeze_layers(self, lno=[]):
+        def freeze(layer):
+            for param in layer.parameters():
+                param.requires_grad = False
+        for idx in lno:
+            freeze(self.layers[idx])
+
     def forward(self, input_wave:Tensor):
         # input_wave is [N,L]
         enc_output = self.encoder_layer(input_wave)
@@ -89,10 +97,9 @@ class Model(nn.Module):
                       **kw) -> dict:
         results = []
         x = kw['x']
-        wndyhat = self.loss_window * yhat
-        wndy = self.loss_window * y
-        wnd_sisnr = torch.mean(evaluate.sisnr(wndy, wndyhat))
-        results.append(("loss",-wnd_sisnr))
+        #wndyhat = self.loss_window * yhat
+        #wndy = self.loss_window * y
+        #wnd_sisnr = torch.mean(evaluate.sisnr(wndy, wndyhat))
 
         sisnr = torch.mean(evaluate.sisnr(y, yhat))
         sisnrX = torch.mean(evaluate.sisnr(x, yhat))
@@ -101,6 +108,9 @@ class Model(nn.Module):
         mse = F.mse_loss(yhat, y)
         mean = torch.mean(yhat)-torch.mean(y)
         std = torch.std(yhat)-torch.std(y)
+        
+        results.append(("loss",-sisnr))
+
         results.append(("sisnr",sisnr))
         results.append(("sisnri",sisnri))
         results.append(("sdr",sdr))

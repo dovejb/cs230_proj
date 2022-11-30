@@ -156,8 +156,8 @@ class DecodeWave(nn.Module):
         self.C = embed.C
     def forward(self, z:Tensor):
         l = self.wave_length+2*self.padding
-        x = torch.zeros((z.shape[0], l))
-        overlapCounts = torch.ones((l,),dtype=torch.float32)
+        x = torch.zeros((z.shape[0], l)).cuda()
+        overlapCounts = torch.ones((l,),dtype=torch.float32).cuda()
         for t in range(self.T):
             start = self.hop_size * t
             end = start + self.window_size
