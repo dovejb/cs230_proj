@@ -8,7 +8,7 @@ from .embedding import *
 """
 
 class DepthwiseConv1D(nn.Module):
-    def __init__(self, in_chan=1, out_chan=3, kernel=3, dilation=1):
+    def __init__(self, in_chan=512, T=50, out_chan=1024, kernel=3, dilation=1):
         super(DepthwiseConv1D, self).__init__()
 
         padding1 = (kernel-1)//2*dilation
@@ -20,6 +20,8 @@ class DepthwiseConv1D(nn.Module):
             dilation=dilation,
             padding=padding1,
         )
+        self.prelu = nn.PReLU()
+        self.layernorm = nn.LayerNorm((in_chan,T))
         self.conv2 = nn.Conv1d(
             in_channels=in_chan,
             out_channels=out_chan,
@@ -30,46 +32,55 @@ class DepthwiseConv1D(nn.Module):
 
     def forward(self, input:Tensor):
         x = self.conv1(input)
+        x = self.prelu(x)
+        x = self.layernorm(x)
         output = self.conv2(x)
         return output
 
 class TemporalBlock(nn.Module):
-    def __init__(self, T, chan=1, block_chan=64, dilation=1):
+    def __init__(self, T, chan=512, block_chan=1024, dilation=1):
         super(TemporalBlock, self).__init__()
         self.T = T
         self.chan = chan
 
-        self.extend = nn.Conv1d(
+        self.pointconv = nn.Conv1d(
             in_channels=chan,
             out_channels=block_chan,
             kernel_size=1,
             stride=1,
             padding=0,
         )
-        self.layernorm1 = nn.LayerNorm((block_chan, T))
-        self.prelu1 = nn.PReLU(block_chan)
-        self.main = DepthwiseConv1D(block_chan, chan, 3, dilation)
-        self.layernorm2 = nn.LayerNorm((chan, T))
-        self.prelu2 = nn.PReLU(chan)
+        self.prelu = nn.PReLU(block_chan)
+        self.layernorm = nn.LayerNorm((block_chan, T))
+        self.main = DepthwiseConv1D(block_chan, T, chan, 3, dilation)
 
     def forward(self, input:Tensor):
         x = input
         assert x.shape[-1] == self.T and x.shape[-2] == self.chan
-        x = self.extend(x)
-        x = self.layernorm1(x)
-        x = self.prelu1(x)
+        x = self.pointconv(x)
+        x = self.prelu(x)
+        x = self.layernorm(x)
         x = self.main(x)
-        x = self.layernorm2(x)
-        x = self.prelu2(x)
-        return x + input
+        output = x + input
+        return output
 
 class TCN(nn.Module):
-    def __init__(self, T, chan=1, block_chan=64, dropout=0.2, dilation_n=4, repeat_n=2):
+    def __init__(self, T, chan=1, bottleneck_dim=128, block_chan=64, dropout=0.2, dilation_n=4, repeat_n=2):
         super(TCN, self).__init__()
         self.chan = chan
         self.T = T
+        self.bottleneck_dim = bottleneck_dim
         self.repeat_n = repeat_n
         self.dilation_n = dilation_n
+
+        self.layernorm = nn.LayerNorm(T)
+        self.bottleneck = nn.Conv1d(
+            in_channels=chan,
+            out_channels=bottleneck_dim,
+            kernel_size=1,
+            stride=1,
+            padding=0,
+        )
 
         self.blocks = nn.ModuleList([])
         for i in range(repeat_n):
@@ -77,25 +88,39 @@ class TCN(nn.Module):
             for j in range(dilation_n):
                 self.blocks.append(TemporalBlock(
                     T,
-                    chan=chan,
+                    chan=bottleneck_dim,
                     block_chan=block_chan,
                     dilation=dilation, 
                 ))
                 dilation *= 2
-        self.activation = nn.Sigmoid()
+        self.prelu = nn.PReLU(bottleneck_dim)
+        self.separate = nn.Conv1d(
+            in_channels=bottleneck_dim,
+            out_channels=chan,
+            kernel_size=1,
+            stride=1,
+            padding=0,
+        )
+
+        self.activation = nn.ReLU()
     
     def forward(self, input:Tensor):
         """
-            input should be (after Att Encoder) [N, T, F] (F is num features)
+            input should be [N,F,T]
             output is mask [N,F,T]
 
             (block input should be [N,F,T])
         """
         x = input
-        assert x.shape[-2] == self.T and x.shape[-1] == self.chan, f"shape mismatch: x is {x.shape[1:]}, require {(self.T,self.chan)}"
-        x = x.permute(0,2,1)
+        assert x.shape[-1] == self.T and x.shape[-2] == self.chan, f"shape mismatch: x is {x.shape[1:]}, require {(self.chan,self.T)}"
+        x = self.layernorm(x)
+        x = self.bottleneck(x)
+
         for block in self.blocks:
             x = block(x)
+        
+        x = self.prelu(x)
+        x = self.separate(x)
         output = self.activation(x)
         return output
 

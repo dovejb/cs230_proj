@@ -4,7 +4,7 @@ from torch.nn import functional as F
 from torchinfo import summary
 import numpy as np
 from constants import *
-import evaluate
+import metrics
 from torch.utils.data import DataLoader
 
 class ResBlock(nn.Module):
@@ -131,10 +131,10 @@ class WaveCNN(nn.Module):
                       **kw) -> dict:
         results = []
         x = kw['x']
-        sisnr = torch.mean(evaluate.sisnr(y, yhat))
-        sisnrX = torch.mean(evaluate.sisnr(x, yhat))
-        sisnri = torch.mean(sisnr - evaluate.sisnr(y, x))
-        sdr = torch.mean(evaluate.new_sdr(y, yhat))
+        sisnr = torch.mean(metrics.sisnr(y, yhat))
+        sisnrX = torch.mean(metrics.sisnr(x, yhat))
+        sisnri = torch.mean(sisnr - metrics.sisnr(y, x))
+        sdr = torch.mean(metrics.new_sdr(y, yhat))
         mse = F.mse_loss(yhat, y)
         mean = torch.mean(yhat)-torch.mean(y)
         std = torch.std(yhat)-torch.std(y)

@@ -52,7 +52,7 @@ def positional_encoding(positions=100, d=512):
     # output shape is [1,positions,d]
     return torch.from_numpy(pos_encoding)
 
-pos_encoding = positional_encoding(100,512).permute(0,2,1)
+pos_encoding = positional_encoding(100,2048).permute(0,2,1)
 pos_encoding = pos_encoding.repeat(32,1,1)
 # here pos_encoding is [N,F,T]
 pos_encoding = pos_encoding.cuda()

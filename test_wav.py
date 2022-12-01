@@ -5,7 +5,7 @@ import tensorflow as tf
 from tensorflow.keras.losses import MeanSquaredError
 import numpy as np
 import museval
-from evaluate import new_sdr
+from metrics import new_sdr
 
 def test_loss(y, y_pred):
     error = y - y_pred

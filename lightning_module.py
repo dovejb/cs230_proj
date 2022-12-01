@@ -10,9 +10,9 @@ from convtasnet.utility.sdr import calc_sdr_torch
 
 class VocalSeparator(pl.LightningModule):
     def __init__(self,
-                 model,
-                 lr,
-                 name,
+                 model=None,
+                 lr=1e-3,
+                 name="",
                 ):
         super(VocalSeparator, self).__init__()
 

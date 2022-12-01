@@ -231,11 +231,11 @@ class DecodeConv(nn.Module):
             stride=embed.hop_size,
             padding=embed.padding,
         )
-        self.activation = nn.Sigmoid()
+        #self.activation = nn.Sigmoid()
 
     def forward(self, z:Tensor):
         z = self.convtranspose(z)
-        z = self.activation(z)
+        #z = self.activation(z)
         # z is [N,1,L]
         z = z.view(z.shape[0], z.shape[2])
         return z
