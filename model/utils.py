@@ -57,19 +57,27 @@ pos_encoding = pos_encoding.repeat(32,1,1)
 # here pos_encoding is [N,F,T]
 pos_encoding = pos_encoding.cuda()
 
-def get_attn_local_mask(local_size=5, T=50):
+def get_attn_local_mask(local_size=5, T=50, non_uniform=False):
     mask = torch.ones((T,T),dtype=torch.bool)
-    for i in range(T):
-        st, ed = i-local_size+1, i+local_size
-        for j in range(st,ed):
-            if j < 0 or j >= T:
-                continue
-            mask[i,j] = False
+    if not non_uniform:
+        for i in range(T):
+            st, ed = i-local_size+1, i+local_size
+            for j in range(st,ed):
+                if j < 0 or j >= T:
+                    continue
+                mask[i,j] = False
+    else:
+        for i in range(T):
+            local = min(i, T-1-i)
+            st, ed = i-local, i+local+1
+            for j in range(st,ed):
+                mask[i,j] = False
     return mask.cuda()
+
 
 
 if __name__ == '__main__':
     # prepare for MHA
-    attn_mask = get_attn_local_mask(0,50)
-    for row in attn_mask:
+    mask = get_attn_local_mask(3, 10, True)
+    for row in mask:
         print(row)

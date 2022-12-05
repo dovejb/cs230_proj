@@ -17,7 +17,7 @@ class Model(nn.Module):
                 wave_length=8000,
                 window_size=512,
                 hop_size=160,
-                num_features=512, # only works for EmbeddingConv
+                num_features=512, 
                 num_heads=8,
                 local_size=5,
                 dropout=0.2,
@@ -27,7 +27,7 @@ class Model(nn.Module):
                 num_repeats=2,
                 ):
         """
-            embed_type: 1-STFT 2-WAVE 3-CONV
+            embed_type: 1-STFT 2-CONV
         """
         super(Model, self).__init__()
         if embed_type == 1:
@@ -38,13 +38,6 @@ class Model(nn.Module):
             )
             self.output_layer = DecodeSTFT(self.embed_layer)
         elif embed_type == 2:
-            self.embed_layer = EmbeddingWave(
-                wave_length=wave_length,
-                window_size=window_size,
-                hop_size=hop_size,
-            )
-            self.output_layer = DecodeWave(self.embed_layer)
-        elif embed_type == 3:
             self.embed_layer = EmbeddingConv(
                 wave_length=wave_length,
                 window_size=window_size,

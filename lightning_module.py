@@ -6,7 +6,6 @@ from torch import optim
 from constants import *
 import soundfile as sf
 import time
-from convtasnet.utility.sdr import calc_sdr_torch
 
 class VocalSeparator(pl.LightningModule):
     def __init__(self,
@@ -20,6 +19,7 @@ class VocalSeparator(pl.LightningModule):
         self.lr = lr
         self.dumpCount = 0
         self.name = name
+        self.trainstep = 0
     
     def forward(self, input: Tensor, **kwargs):
         return self.model(input, **kwargs)
@@ -29,7 +29,8 @@ class VocalSeparator(pl.LightningModule):
         yhat = self.forward(x)
         # loss should be a list<Tuple<name, loss_value>>, the 0th is loss, the others are metrics
         loss = self.model.loss_function(y, yhat, x=x) 
-        
+        self.trainstep += 1
+
         self.log_dict({l[0]:l[1] for l in loss})
 
         return loss[0][1]
@@ -60,8 +61,8 @@ class VocalSeparator(pl.LightningModule):
                                )
         optims.append(optimizer)
 
-        #scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.995)
-        #scheduler = optim.lr_scheduler.LinearLR(optimizer, 1, 0.5, total_iters=300)
+        #scheduler = optim.lr_scheduler.StepLR(optimizer, 50, 0.7)
+        #scheduler = optim.lr_scheduler.LinearLR(optimizer, 1, 0.2, 1000)
         #scheds.append(scheduler)
 
         return optims, scheds
