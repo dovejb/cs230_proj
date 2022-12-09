@@ -53,3 +53,7 @@ class DualModel(nn.Module):
         tout = self.td(input)
         output = (fout + tout)/2
         return output
+    def loss_function(self, y, yhat, *args, **kw):
+        return self.fd.loss_function(y, yhat, *args, **kw)
+
+

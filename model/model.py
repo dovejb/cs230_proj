@@ -7,6 +7,8 @@ from .tcn import TCN
 from .encoder import Encoder
 from .decoder import Decoder
 import metrics
+import soundfile as sf
+import numpy as np
 
 def print_meta(name, x:Tensor):
     print(name, "mean", torch.mean(x), "std", torch.std(x))
@@ -27,7 +29,7 @@ class Model(nn.Module):
                 num_repeats=2,
                 ):
         """
-            embed_type: 1-STFT 2-CONV
+            embed_type: 1-STFT 2-CONV 3-Hybrid
         """
         super(Model, self).__init__()
         if embed_type == 1:
@@ -45,6 +47,14 @@ class Model(nn.Module):
                 num_features=num_features,
             )
             self.output_layer = DecodeConv(self.embed_layer)
+        elif embed_type == 3:
+            self.embed_layer = EmbeddingHybrid(
+                wave_length=wave_length,
+                window_size=window_size,
+                hop_size=hop_size,
+                num_features=num_features,
+            )
+            self.output_layer = DecodeHybrid(self.embed_layer)
         else:
             raise Exception("Invalid embed_type")
 
@@ -136,6 +146,52 @@ class Model(nn.Module):
         results.append(("sisnrX",sisnrX))
 
         return results
+    
+    def evaluate_middles(self, x, y):
+        wlen = self.embed_layer.wave_length
+        yhat = self.forward(x)
+        results = []
+        for i in range(5):
+            r = 0.1 * i
+            start = int(r*wlen)
+            end = wlen - start
+            sisnr = torch.mean(metrics.sisnr(y[:,start:end], yhat[:,start:end])).cpu().numpy()
+            results.append((start, end, sisnr))
+        return results
+    
+    def separate(self, xpath:str, ypath=None, seg_start=None, seg_end=None):
+        x, sr = sf.read(xpath)
+        assert sr == 16000 and xpath.endswith(".wav"), "Only accept wav file and sample rate == 16000"
+        name = xpath[:-4]
+        outname = "out.wav"
+        flen = len(x)
+        wlen = self.embed_layer.wave_length
+        if seg_start is None:
+            seg_start = 0
+        if seg_end is None:
+            seg_end = wlen
+        x = F.pad(torch.Tensor(x), (seg_start, wlen+wlen-seg_end))
+        x = x.cuda()
+        start = 0
+        end = start + wlen
+        middles = []
+        while end < len(x):
+            yh = self.forward(x[start:end])
+            middles.append(yh[seg_start:seg_end].detach().cpu().numpy())
+            start += seg_end-seg_start
+            end = start + wlen
+        middles = np.array(middles)
+        print(middles.shape)
+        result = np.reshape(middles, -1)
+        print(result.shape)
+        result = result[:flen]
+        if ypath is not None:
+            y, _ = sf.read(ypath)
+            sisnr = metrics.sisnr(torch.from_numpy(y), torch.from_numpy(result)).numpy()
+            print("SISNR", sisnr)
+        sf.write(outname, result, sr)
+
+
 
 if __name__ == '__main__':
     model = Model()

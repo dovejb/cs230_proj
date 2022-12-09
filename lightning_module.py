@@ -61,8 +61,8 @@ class VocalSeparator(pl.LightningModule):
                                )
         optims.append(optimizer)
 
-        #scheduler = optim.lr_scheduler.StepLR(optimizer, 50, 0.7)
-        #scheduler = optim.lr_scheduler.LinearLR(optimizer, 1, 0.2, 1000)
-        #scheds.append(scheduler)
+        scheduler = optim.lr_scheduler.StepLR(optimizer, 25, 0.8)
+        #scheduler = optim.lr_scheduler.LinearLR(optimizer, 1, 0.6, 100)
+        scheds.append(scheduler)
 
         return optims, scheds

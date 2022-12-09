@@ -9,6 +9,7 @@ import os
 import soundfile as sf
 from data import *
 from model.model import Model
+from model.dual_model import DualModel
 import librosa
 
 NAME="m1"
@@ -16,31 +17,31 @@ NAME="m1"
 
 hyperparameters = {
     #embedding parameters
-    "embed_type":2,  # 1-STFT 2-CONV
+    "embed_type":3,  # 1-STFT 2-CONV 3-Hybrid
     "wave_length":16000,
     "window_size":512,
     "hop_size":160,
-    "num_features":512,
+    "num_features":1024,
     #encoder parameters
     "num_heads":16,
-    "local_size":20,
+    "local_size":16,
     "dropout":0.0,
     #tcn parameters
-    "tcn_bottleneck_dim": 128,
+    "tcn_bottleneck_dim": 256,
     "num_tcn_block_channels":512,
     "num_dilations":4,
     "num_repeats":3,
 }
 other_configs = {
-    "num_epochs": 600,
-    "num_train": 512,#18432,
-    "num_test": 512,#256,
-    "batch_size": 512,
-    "lr": 4e-4,
+    "num_epochs": 200,
+    "num_train": 25600,#18432,
+    "num_test": 4096,#256,
+    "batch_size": 128,
+    "lr": 8e-5,
     "freeze_layers": [],#[0,2,3,4],
     "train_fnum": 100,
     "train_set_range": None,#[],
-    "check_val_every_n": 100,
+    "check_val_every_n": 5,
 }
 
 LEN=hyperparameters["wave_length"]
@@ -64,7 +65,12 @@ def fastdump(x:torch.Tensor,y:torch.Tensor, label=""):
     print(label, "fast dumping y", f"max:{np.max(y)} db:{np.max(librosa.amplitude_to_db(y))}")
     sf.write("./y.wav", y, SR)
 
-model = Model(**hyperparameters)
+if True:
+    model = Model(**hyperparameters)
+    model.freeze_layers(other_configs["freeze_layers"])
+else:
+    del(hyperparameters['embed_type'])
+    model = DualModel(**hyperparameters)
 data = DataModule(
     n_train=other_configs["num_train"],
     n_test=other_configs["num_test"],
@@ -80,9 +86,8 @@ if False:
         print(f"Dataset[{i}]: max_x: {torch.max(torch.abs(x))}, max_y: {torch.max(torch.abs(y))}")
 
 module = VocalSeparator(model, other_configs["lr"], name=NAME)
-seed_everything(19900413)
+#seed_everything(19900413)
 if __name__ == '__main__':
-    model.freeze_layers(other_configs["freeze_layers"])
     if False:
         from torchinfo import summary
         summary(model, input_size=(16,LEN))
@@ -97,7 +102,7 @@ if __name__ == '__main__':
     trainer = Trainer(logger=tb_logger,
                       callbacks=[
                         LearningRateMonitor(),
-                        ModelCheckpoint(save_top_k=0,
+                        ModelCheckpoint(save_top_k=2,
                                         dirpath = os.path.join(tb_logger.log_dir, "checkpoints"),
                                         monitor = "val_loss",
                                         save_last = True,
@@ -121,7 +126,7 @@ if __name__ == '__main__':
     trainer.fit(
         model=module,
         datamodule=data,
-        #ckpt_path=f"./log/{NAME}/version_1/checkpoints/last.ckpt",
+        ckpt_path=f"./log/{NAME}/version_48/checkpoints/epoch=189-step=38000.ckpt",
         )
     torch.save({
         "model": model.state_dict(),

@@ -78,6 +78,6 @@ def get_attn_local_mask(local_size=5, T=50, non_uniform=False):
 
 if __name__ == '__main__':
     # prepare for MHA
-    mask = get_attn_local_mask(3, 10, True)
+    mask = get_attn_local_mask(2, 10, False)
     for row in mask:
         print(row)

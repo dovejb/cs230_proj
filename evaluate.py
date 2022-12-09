@@ -33,9 +33,31 @@ def evaluate_local_mask():
         loss = -torch.mean(metrics.sisnr(yi, yhati))
         print(loss.detach().cpu().numpy())
 
+def evaluate_middles():
+    ckpt_path = f"./ckpts/hyper_embed_best.ckpt"
+    checkpoint = torch.load(ckpt_path)
+    model.load_state_dict(checkpoint["model"])
+    model.cuda()
+    x, y = next(iter(data.val_dataloader()))
+    x, y = x.cuda(), y.cuda()
+    print(x.shape, y.shape)
+    middles_eval = model.evaluate_middles(x, y)
+    print(middles_eval)
+
+def separate():
+    ckpt_path = f"./ckpts/hyper_embed_best.ckpt"
+    checkpoint = torch.load(ckpt_path)
+    model.load_state_dict(checkpoint["model"])
+    model.cuda()
+    model.separate("./data/test/001_x.wav", ypath="./data/test/001_y.wav")
+
+
 if __name__ == '__main__':
-    if True:
+    if False:
         evaluate_local_mask()
+        exit()
+    if True:
+        separate()
         exit()
     ckpt_path = f"./ckpts/10song-40-1202.ckpt"
     checkpoint = torch.load(ckpt_path)
